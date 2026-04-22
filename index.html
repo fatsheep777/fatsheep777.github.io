@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>恩格尔曼实验模拟器 - 精美螺旋带状叶绿体</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(145deg, #1a472a 0%, #0e2a1a 100%);
+            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .sim-card {
+            max-width: 1300px;
+            width: 100%;
+            background: #fef9e8;
+            border-radius: 56px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.6);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2c5e2e;
+            padding: 20px 32px;
+            color: white;
+            text-shadow: 2px 2px 3px rgba(0,0,0,0.3);
+            border-bottom: 3px solid #ffd966;
+        }
+        .header h1 { margin: 0; font-size: 1.8rem; letter-spacing: 1px; }
+        .header p { margin: 8px 0 0; opacity: 0.9; font-style: italic; }
+
+        .step-bar {
+            display: flex;
+            background: #3b2a1f;
+            padding: 12px 32px;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            border-bottom: 1px solid #e0c8a0;
+        }
+        .step-btn {
+            background: #d9b48b;
+            border: none;
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 10px 28px;
+            border-radius: 60px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #7a4a2a;
+            transition: 0.07s linear;
+            color: #2d2b1f;
+            font-family: inherit;
+        }
+        .step-btn.active {
+            background: #ffb347;
+            color: #2c1a0a;
+            box-shadow: 0 2px 0 #7a4a2a;
+            transform: translateY(2px);
+        }
+        .step-btn:hover { background: #ffa559; transform: translateY(-1px); box-shadow: 0 5px 0 #7a4a2a; }
+
+        .simulator-area {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            padding: 24px 28px;
+            gap: 30px;
+            background: #e9e0cf;
+        }
+
+        .canvas-container {
+            flex: 3;
+            min-width: 520px;
+            background: #1a2a1f;
+            border-radius: 32px;
+            padding: 15px;
+            box-shadow: inset 0 0 0 3px #f9eec1, 0 12px 24px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            background: #0f1f0a;
+            border-radius: 24px;
+            margin: 0 auto;
+            cursor: grab;
+            box-shadow: 0 4px 12px black;
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        .info-panel {
+            flex: 1.2;
+            min-width: 260px;
+            background: #fcf7ef;
+            border-radius: 32px;
+            padding: 20px;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .exp-stage {
+            background: #2e5a2c;
+            border-radius: 28px;
+            padding: 16px;
+            color: white;
+            text-align: center;
+        }
+        .exp-stage h3 { margin: 0 0 8px; font-size: 1.5rem; }
+        .light-control {
+            background: #f0e2cc;
+            border-radius: 28px;
+            padding: 15px;
+            text-align: center;
+        }
+        .light-control label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 8px;
+            color: #2e3b1f;
+        }
+        .coord-display {
+            font-family: monospace;
+            background: #2d2b20;
+            color: #b3ffaa;
+            padding: 8px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            text-align: center;
+            margin-top: 8px;
+        }
+        .bacteria-stats {
+            background: #c0d6b3;
+            border-radius: 28px;
+            padding: 12px 18px;
+            font-weight: bold;
+        }
+        .legend {
+            display: flex;
+            gap: 18px;
+            justify-content: center;
+            font-size: 0.75rem;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .legend span { display: inline-block; width: 18px; height: 18px; border-radius: 50%; margin-right: 6px; }
+        button.small {
+            background: #b47c48;
+            border: none;
+            border-radius: 40px;
+            padding: 6px 14px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .intensity-slider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        footer {
+            background: #e2cfaa;
+            text-align: center;
+            padding: 12px;
+            font-size: 0.75rem;
+            color: #3a2a1a;
+        }
+        @media (max-width: 860px) {
+            .canvas-container { min-width: 300px; }
+            .step-btn { padding: 6px 18px; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="sim-card">
+    <div class="header">
+        <h1>🔬 恩格尔曼实验模拟器 | 精致螺旋叶绿体 + 自由点光源</h1>
+        <p>✨ 单条螺旋带状叶绿体，立体质感 | 第二步：仅被点光源照射的区域产氧，细菌聚集光斑，无光区均匀分布</p>
+    </div>
+    <div class="step-bar">
+        <button class="step-btn" data-step="1">🌑 第一步: 黑暗无氧环境</button>
+        <button class="step-btn" data-step="2">💡 第二步: 点状光源 (自由移动)</button>
+        <button class="step-btn" data-step="3">☀️ 第三步: 完全暴露在光下</button>
+    </div>
+    <div class="simulator-area">
+        <div class="canvas-container">
+            <canvas id="algaeCanvas" width="800" height="500" style="width:100%; height:auto; max-width:800px; aspect-ratio:800/500"></canvas>
+            <div class="coord-display" id="lightCoordMsg">✨ 第二步: 鼠标拖拽移动点状光源 | 细菌只聚集在光斑区域，无光区均匀分布</div>
+        </div>
+        <div class="info-panel">
+            <div class="exp-stage">
+                <h3 id="stageTitle">🌑 黑暗无氧阶段</h3>
+                <p id="stageDesc">无光照，水棉不释放氧气，好氧细菌均匀分散</p>
+            </div>
+            <div class="light-control" id="lightControlPanel" style="display: none;">
+                <label>💡 点状光源位置 (拖拽移动)</label>
+                <div>🎯 光源坐标: X <span id="lightXVal">400</span> , Y <span id="lightYVal">250</span></div>
+                <div class="intensity-slider">
+                    <span>🔆 光强:</span>
+                    <input type="range" id="lightIntensitySlider" min="0.3" max="1.2" step="0.01" value="0.95">
+                    <span id="intensityVal">0.95</span>
+                </div>
+                <button class="small" id="resetLightBtn">重置光源到细胞中央</button>
+                <div style="font-size: 12px; margin-top: 8px;">💡 光源半径32px，仅照亮区域内叶绿体产氧，无光区无氧气 → 细菌均匀分布</div>
+            </div>
+            <div class="bacteria-stats">
+                <div>🦠 好氧细菌总数: <span id="bacteriaCount">0</span></div>
+                <div>📈 聚集区域: <span id="hotspotDesc">无光照热点</span></div>
+                <div class="legend">
+                    <span style="background: #4caf50; box-shadow:0 0 4px #8bc34a;"></span> 螺旋叶绿体(立体带状)
+                    <span style="background: #00cc88;"></span> 好氧细菌
+                    <span style="background: #ffaa33; box-shadow:0 0 6px gold;"></span> 点状光源(第二步)
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer>
+        🧪 模拟精髓：螺旋带状叶绿体为水棉特有形态，优化后的叶绿体呈现宽厚螺旋光带，好氧细菌精准趋氧。第二步中未被照亮的叶绿体区域不产氧，细菌随机游走实现均匀分布。
+    </footer>
+</div>
+
+<script>
+    (function(){
+        const canvas = document.getElementById('algaeCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 800;
+        canvas.height = 500;
+        
+        let currentStep = 1;
+        let lightX = 400, lightY = 250;
+        let lightIntensity = 0.95;
+        
+        // 细胞区域 (长筒状)
+        const cellRect = { x: 100, y: 100, w: 600, h: 300 };
+        
+        // ---------- 精美单条螺旋带状叶绿体 (优化视觉) ----------
+        const startX = cellRect.x + 28;
+        const endX = cellRect.x + cellRect.w - 28;
+        const centerY = cellRect.y + cellRect.h/2;
+        const amplitude = 54;        // 螺旋幅度
+        const frequency = 3.2;       // 螺旋周期
+        const bandWidth = 24;         // 带状宽度 (更宽厚，更明显)
+        
+        // 螺旋中心线Y值
+        function getSpiralCenterY(x) {
+            if(x < startX) x = startX;
+            if(x > endX) x = endX;
+            let t = (x - startX) / (endX - startX);
+            return centerY + Math.sin(t * Math.PI * frequency) * amplitude;
+        }
+        
+        // 判断点是否在螺旋带状叶绿体内 (宽度 bandWidth/2 半宽)
+        function isInsideChloroplast(px, py) {
+            if(px < cellRect.x || px > cellRect.x+cellRect.w || py < cellRect.y || py > cellRect.y+cellRect.h) return false;
+            let clampX = Math.min(Math.max(px, startX), endX);
+            let centerYline = getSpiralCenterY(clampX);
+            let distY = Math.abs(py - centerYline);
+            if(distY <= bandWidth/2 + 2) return true;
+            // 边缘柔和包容
+            if(px < startX + 12) {
+                let edgeY = getSpiralCenterY(startX);
+                if(Math.abs(py - edgeY) < bandWidth/2 + 4) return true;
+            }
+            if(px > endX - 12) {
+                let edgeY = getSpiralCenterY(endX);
+                if(Math.abs(py - edgeY) < bandWidth/2 + 4) return true;
+            }
+            return false;
+        }
+        
+        // 氧气场网格
+        const gridCols = 42;
+        const gridRows = 26;
+        let oxygenGrid = Array(gridCols).fill().map(() => Array(gridRows).fill(0));
+        
+        let bacteriaList = [];
+        const BACTERIA_COUNT = 440;
+        
+        // 更新氧气场
+        function updateOxygenField() {
+            for(let i=0;i<gridCols;i++) for(let j=0;j<gridRows;j++) oxygenGrid[i][j] = 0;
+            const cellW = canvas.width / gridCols;
+            const cellH = canvas.height / gridRows;
+            const step = currentStep;
+            
+            if(step === 1) return;
+            else if(step === 2) {
+                const lightRadius = 32;
+                for(let gx=0; gx<gridCols; gx++){
+                    for(let gy=0; gy<gridRows; gy++){
+                        const worldX = gx * cellW + cellW/2;
+                        const worldY = gy * cellH + cellH/2;
+                        if(!isInsideChloroplast(worldX, worldY)) continue;
+                        const dx = worldX - lightX, dy = worldY - lightY;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if(dist < lightRadius) {
+                            let falloff = 1.0 - (dist / lightRadius) * 0.45;
+                            let intensity = 0.88 * falloff * lightIntensity;
+                            oxygenGrid[gx][gy] = Math.min(1.0, intensity);
+                        }
+                    }
+                }
+            }
+            else if(step === 3) {
+                for(let gx=0; gx<gridCols; gx++){
+                    for(let gy=0; gy<gridRows; gy++){
+                        const worldX = gx * cellW + cellW/2;
+                        const worldY = gy * cellH + cellH/2;
+                        if(isInsideChloroplast(worldX, worldY)) oxygenGrid[gx][gy] = 1.0;
+                    }
+                }
+            }
+            
+            // 平滑，但第二步无光区严格为零
+            if(step === 2 || step === 3) {
+                let smoothed = Array(gridCols).fill().map(()=>Array(gridRows).fill(0));
+                for(let i=0;i<gridCols;i++){
+                    for(let j=0;j<gridRows;j++){
+                        if(step === 2 && oxygenGrid[i][j] === 0) {
+                            smoothed[i][j] = 0;
+                            continue;
+                        }
+                        let sum = oxygenGrid[i][j];
+                        let cnt = 1;
+                        if(i>0) { sum+=oxygenGrid[i-1][j]; cnt++; }
+                        if(i<gridCols-1) { sum+=oxygenGrid[i+1][j]; cnt++; }
+                        if(j>0) { sum+=oxygenGrid[i][j-1]; cnt++; }
+                        if(j<gridRows-1) { sum+=oxygenGrid[i][j+1]; cnt++; }
+                        smoothed[i][j] = sum/cnt;
+                        if(step === 2 && smoothed[i][j] < 0.02) smoothed[i][j] = 0;
+                    }
+                }
+                for(let i=0;i<gridCols;i++) for(let j=0;j<gridRows;j++) oxygenGrid[i][j] = smoothed[i][j];
+            }
+        }
+        
+        // 细菌运动
+        function updateBacteriaMovement() {
+            const step = currentStep;
+            const cellW = canvas.width / gridCols;
+            const cellH = canvas.height / gridRows;
+            
+            if(step === 1) {
+                for(let b of bacteriaList) {
+                    b.x += (Math.random() - 0.5) * 3.2;
+                    b.y += (Math.random() - 0.5) * 3.2;
+                    clampBacteria(b);
+                }
+                return;
+            }
+            
+            if(step === 2) {
+                for(let b of bacteriaList) {
+                    let gx = Math.floor(b.x / cellW);
+                    let gy = Math.floor(b.y / cellH);
+                    gx = Math.min(Math.max(gx, 0), gridCols-1);
+                    gy = Math.min(Math.max(gy, 0), gridRows-1);
+                    let currentOxy = oxygenGrid[gx][gy];
+                    if(currentOxy < 0.02) {
+                        // 无氧气区域: 布朗运动，均匀分布
+                        b.x += (Math.random() - 0.5) * 3.3;
+                        b.y += (Math.random() - 0.5) * 3.3;
+                        clampBacteria(b);
+                    } else {
+                        // 趋氧
+                        let bestDX = 0, bestDY = 0, bestOxy = currentOxy;
+                        for(let dx=-1; dx<=1; dx++){
+                            for(let dy=-1; dy<=1; dy++){
+                                if(dx===0 && dy===0) continue;
+                                let nx = gx+dx, ny = gy+dy;
+                                if(nx>=0 && nx<gridCols && ny>=0 && ny<gridRows){
+                                    let oxy = oxygenGrid[nx][ny];
+                                    if(oxy > bestOxy) {
+                                        bestOxy = oxy;
+                                        bestDX = dx;
+                                        bestDY = dy;
+                                    }
+                                }
+                            }
+                        }
+                        let moveX = bestDX * 2.5;
+                        let moveY = bestDY * 2.5;
+                        moveX += (Math.random() - 0.5) * 1.0;
+                        moveY += (Math.random() - 0.5) * 1.0;
+                        b.x += moveX;
+                        b.y += moveY;
+                        clampBacteria(b);
+                    }
+                }
+                return;
+            }
+            
+            if(step === 3) {
+                for(let b of bacteriaList) {
+                    let gx = Math.floor(b.x / cellW);
+                    let gy = Math.floor(b.y / cellH);
+                    gx = Math.min(Math.max(gx, 0), gridCols-1);
+                    gy = Math.min(Math.max(gy, 0), gridRows-1);
+                    let bestDX = 0, bestDY = 0, bestOxy = oxygenGrid[gx][gy];
+                    for(let dx=-1; dx<=1; dx++){
+                        for(let dy=-1; dy<=1; dy++){
+                            if(dx===0 && dy===0) continue;
+                            let nx = gx+dx, ny = gy+dy;
+                            if(nx>=0 && nx<gridCols && ny>=0 && ny<gridRows){
+                                let oxy = oxygenGrid[nx][ny];
+                                if(oxy > bestOxy) {
+                                    bestOxy = oxy;
+                                    bestDX = dx;
+                                    bestDY = dy;
+                                }
+                            }
+                        }
+                    }
+                    let moveX = bestDX * 2.8;
+                    let moveY = bestDY * 2.8;
+                    moveX += (Math.random() - 0.5) * 1.1;
+                    moveY += (Math.random() - 0.5) * 1.1;
+                    b.x += moveX;
+                    b.y += moveY;
+                    clampBacteria(b);
+                }
+            }
+        }
+        
+        function clampBacteria(b) {
+            b.x = Math.min(Math.max(b.x, cellRect.x-14), cellRect.x+cellRect.w+14);
+            b.y = Math.min(Math.max(b.y, cellRect.y-18), cellRect.y+cellRect.h+18);
+            b.x = Math.min(Math.max(b.x, 12), canvas.width-12);
+            b.y = Math.min(Math.max(b.y, 12), canvas.height-12);
+        }
+        
+        // ---------------- 优化后的叶绿体绘图 (精美螺旋带状) ----------------
+        function drawBeautifulSpiral() {
+            const steps = 110;
+            const stepX = (endX - startX) / steps;
+            
+            // 先绘制底层发光效果
+            ctx.save();
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = '#7eff6e';
+            for(let i=0; i<=steps; i++) {
+                let x = startX + i * stepX;
+                let y = getSpiralCenterY(x);
+                // 宽厚主带
+                ctx.beginPath();
+                ctx.ellipse(x, y, bandWidth/2 + 2, bandWidth/2 + 3, 0, 0, Math.PI*2);
+                ctx.fillStyle = '#3f9e2c';
+                ctx.fill();
+            }
+            // 主叶绿体带 (鲜绿色)
+            for(let i=0; i<=steps; i++) {
+                let x = startX + i * stepX;
+                let y = getSpiralCenterY(x);
+                ctx.beginPath();
+                ctx.ellipse(x, y, bandWidth/2 - 1, bandWidth/2 - 1, 0, 0, Math.PI*2);
+                ctx.fillStyle = '#5fb83a';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(x, y-2, bandWidth/2 - 4, bandWidth/2 - 4, 0, 0, Math.PI*2);
+                ctx.fillStyle = '#86d65c';
+                ctx.fill();
+            }
+            // 高光与纹理
+            for(let i=0; i<=steps; i+=2) {
+                let x = startX + i * stepX;
+                let y = getSpiralCenterY(x);
+                ctx.beginPath();
+                ctx.ellipse(x-1, y-2, 3, 5, 0, 0, Math.PI*2);
+                ctx.fillStyle = '#befa8a';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(x+2, y+1, 2, 4, 0, 0, Math.PI*2);
+                ctx.fillStyle = '#d4ffaa';
+                ctx.fill();
+            }
+            // 中心脊线高光
+            ctx.beginPath();
+            for(let i=0; i<=steps; i++) {
+                let x = startX + i * stepX;
+                let y = getSpiralCenterY(x);
+                if(i===0) ctx.moveTo(x, y-1);
+                else ctx.lineTo(x, y-1);
+            }
+            ctx.strokeStyle = '#eaffbb';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+            
+            // 添加外发光粒子感
+            ctx.globalCompositeOperation = 'lighter';
+            for(let i=0; i<=steps; i+=3) {
+                let x = startX + i * stepX;
+                let y = getSpiralCenterY(x);
+                ctx.beginPath();
+                ctx.arc(x-3, y-4, 2, 0, Math.PI*2);
+                ctx.fillStyle = '#c2ff88';
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(x+4, y+2, 1.8, 0, Math.PI*2);
+                ctx.fillStyle = '#aaff66';
+                ctx.fill();
+            }
+            ctx.globalCompositeOperation = 'source-over';
+        }
+        
+        // 绘制点光源光晕
+        function drawPointLight() {
+            if(currentStep !== 2) return;
+            ctx.save();
+            ctx.shadowBlur = 0;
+            const grad = ctx.createRadialGradient(lightX, lightY, 5, lightX, lightY, 40);
+            grad.addColorStop(0, 'rgba(255, 245, 160, 0.9)');
+            grad.addColorStop(0.4, 'rgba(255, 210, 80, 0.55)');
+            grad.addColorStop(1, 'rgba(255, 180, 40, 0)');
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.beginPath();
+            ctx.arc(lightX, lightY, 40, 0, Math.PI*2);
+            ctx.fillStyle = grad;
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(lightX, lightY, 9, 0, Math.PI*2);
+            ctx.fillStyle = '#ffffbb';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(lightX, lightY, 4, 0, Math.PI*2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.beginPath();
+            ctx.arc(lightX, lightY, 16, 0, Math.PI*2);
+            ctx.strokeStyle = '#ffefaa';
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+            ctx.restore();
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0a1f12';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 细胞壁
+            ctx.fillStyle = '#cbe5ba';
+            ctx.beginPath();
+            ctx.roundRect(cellRect.x, cellRect.y, cellRect.w, cellRect.h, 38);
+            ctx.fill();
+            ctx.fillStyle = '#e2fad0';
+            ctx.beginPath();
+            ctx.roundRect(cellRect.x+5, cellRect.y+5, cellRect.w-10, cellRect.h-10, 32);
+            ctx.fill();
+            ctx.strokeStyle = '#518a3a';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.roundRect(cellRect.x, cellRect.y, cellRect.w, cellRect.h, 38);
+            ctx.stroke();
+            
+            // 精美螺旋叶绿体
+            drawBeautifulSpiral();
+            
+            // 点光源
+            drawPointLight();
+            
+            // 细菌
+            for(let b of bacteriaList){
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, 3.2, 0, Math.PI*2);
+                ctx.fillStyle = '#a2ffc2';
+                ctx.shadowBlur = 3;
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, 1.7, 0, Math.PI*2);
+                ctx.fillStyle = '#4eff8e';
+                ctx.fill();
+            }
+            ctx.shadowBlur = 0;
+            
+            // 统计文字
+            let hotText = "";
+            if(currentStep===1) hotText = "均匀分布 (无氧气吸引)";
+            else if(currentStep===2) {
+                let inLightZone = 0;
+                for(let b of bacteriaList) {
+                    const dx = b.x - lightX, dy = b.y - lightY;
+                    if(Math.sqrt(dx*dx+dy*dy) < 34 && isInsideChloroplast(b.x, b.y)) inLightZone++;
+                }
+                hotText = `点光源周围螺旋区 细菌聚集 ~${inLightZone} 只 | 无光区均匀分布`;
+            } else {
+                let chloroCount = 0;
+                for(let b of bacteriaList) if(isInsideChloroplast(b.x, b.y)) chloroCount++;
+                hotText = `全光照 → 整条螺旋叶绿体周围 细菌密集 (${chloroCount}只)`;
+            }
+            document.getElementById('hotspotDesc').innerText = hotText;
+            document.getElementById('bacteriaCount').innerText = bacteriaList.length;
+            document.getElementById('lightXVal').innerText = Math.floor(lightX);
+            document.getElementById('lightYVal').innerText = Math.floor(lightY);
+        }
+        
+        let animFrame;
+        function updateLoop() {
+            updateOxygenField();
+            updateBacteriaMovement();
+            draw();
+            animFrame = requestAnimationFrame(updateLoop);
+        }
+        
+        function initBacteria() {
+            bacteriaList = [];
+            for(let i=0;i<BACTERIA_COUNT;i++){
+                let randX = cellRect.x + Math.random() * cellRect.w;
+                let randY = cellRect.y + Math.random() * cellRect.h;
+                bacteriaList.push({x: randX, y: randY});
+            }
+        }
+        
+        function setStep(step) {
+            currentStep = step;
+            document.querySelectorAll('.step-btn').forEach(btn=>{
+                if(parseInt(btn.getAttribute('data-step'))===step) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+            const lightPanel = document.getElementById('lightControlPanel');
+            lightPanel.style.display = step===2 ? 'block' : 'none';
+            const title = document.getElementById('stageTitle');
+            const desc = document.getElementById('stageDesc');
+            if(step===1){
+                title.innerText = '🌑 黑暗无氧阶段';
+                desc.innerText = '无光照，水棉不释放氧气，好氧细菌均匀分散';
+            } else if(step===2){
+                title.innerText = '💡 点状光源 (自由移动)';
+                desc.innerText = '只有被光源照亮的叶绿体区域产氧 → 细菌聚集于光斑，无光区均匀分布';
+            } else {
+                title.innerText = '☀️ 完全暴露光下';
+                desc.innerText = '整条螺旋叶绿体高效产氧 → 细菌环绕叶绿体密集分布';
+            }
+            updateOxygenField();
+        }
+        
+        function setLightPosition(x, y) {
+            lightX = Math.min(Math.max(x, 20), canvas.width-20);
+            lightY = Math.min(Math.max(y, 20), canvas.height-20);
+            if(currentStep === 2) updateOxygenField();
+        }
+        
+        // 拖拽交互
+        let dragging = false;
+        function onMouseDown(e) {
+            if(currentStep !== 2) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let mx = (e.clientX - rect.left) * scaleX;
+            let my = (e.clientY - rect.top) * scaleY;
+            const dx = mx - lightX, dy = my - lightY;
+            if(Math.sqrt(dx*dx+dy*dy) < 30) {
+                dragging = true;
+                canvas.style.cursor = 'grabbing';
+                e.preventDefault();
+            }
+        }
+        function onMouseMove(e) {
+            if(!dragging || currentStep !== 2) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let mx = (e.clientX - rect.left) * scaleX;
+            let my = (e.clientY - rect.top) * scaleY;
+            setLightPosition(mx, my);
+        }
+        function onMouseUp() { dragging = false; canvas.style.cursor = 'grab'; }
+        canvas.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        canvas.style.cursor = 'grab';
+        
+        document.getElementById('resetLightBtn').addEventListener('click', ()=>{
+            setLightPosition(cellRect.x + cellRect.w/2, cellRect.y + cellRect.h/2);
+        });
+        const intensitySlider = document.getElementById('lightIntensitySlider');
+        const intensitySpan = document.getElementById('intensityVal');
+        intensitySlider.addEventListener('input', (e)=>{
+            lightIntensity = parseFloat(e.target.value);
+            intensitySpan.innerText = lightIntensity.toFixed(2);
+            if(currentStep === 2) updateOxygenField();
+        });
+        document.querySelectorAll('.step-btn').forEach(btn=>{
+            btn.addEventListener('click',()=>setStep(parseInt(btn.getAttribute('data-step'))));
+        });
+        
+        if(!CanvasRenderingContext2D.prototype.roundRect) {
+            CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+                if(w<2*r) r=w/2; if(h<2*r) r=h/2;
+                this.moveTo(x+r,y); this.lineTo(x+w-r,y);
+                this.quadraticCurveTo(x+w,y,x+w,y+r);
+                this.lineTo(x+w,y+h-r); this.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+                this.lineTo(x+r,y+h); this.quadraticCurveTo(x,y+h,x,y+h-r);
+                this.lineTo(x,y+r); this.quadraticCurveTo(x,y,x+r,y);
+                return this;
+            };
+        }
+        
+        initBacteria();
+        setStep(1);
+        setLightPosition(cellRect.x + cellRect.w/2, cellRect.y + cellRect.h/2);
+        updateOxygenField();
+        updateLoop();
+    })();
+</script>
+</body>
+</html>
